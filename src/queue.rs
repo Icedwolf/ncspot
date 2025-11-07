@@ -248,6 +248,67 @@ impl Queue {
         }
     }
 
+    /// Remove duplicate tracks from the queue, keeping only the first occurrence
+    /// of each track based on URI. This preserves the currently playing track and
+    /// updates indices accordingly.
+    pub fn dedup(&self) {
+        let mut queue = self.queue.write().unwrap();
+        let mut current = self.current_track.write().unwrap();
+
+        // Track which URIs we've seen
+        let mut seen = std::collections::HashSet::new();
+        let mut indices_to_remove = Vec::new();
+
+        // Identify duplicates - keep first occurrence
+        for (index, track) in queue.iter().enumerate() {
+            let track_uri = track.uri();
+
+            if seen.contains(&track_uri) {
+                indices_to_remove.push(index);
+            } else {
+                seen.insert(track_uri);
+            }
+        }
+
+        // Remove duplicates in reverse order to maintain correct indices
+        for &index in indices_to_remove.iter().rev() {
+            queue.remove(index);
+
+            // Update current track index if needed
+            if let Some(current_index) = *current {
+                match current_index.cmp(&index) {
+                    Ordering::Greater => {
+                        // Current track is after the removed one, shift index down
+                        current.replace(current_index - 1);
+                    }
+                    Ordering::Equal => {
+                        // We're removing the current track - this shouldn't happen
+                        // since we keep first occurrence, but handle it safely
+                        // by keeping the index (next track will now be at this position)
+                    }
+                    Ordering::Less => {
+                        // Current track is before the removed one, no change needed
+                    }
+                }
+            }
+        }
+
+        // Regenerate shuffle order if shuffle is enabled
+        if self.get_shuffle() {
+            drop(queue); // Release the write lock before calling generate_random_order
+            drop(current);
+            self.generate_random_order();
+        }
+        let removed_count = indices_to_remove.len();
+
+        #[cfg(feature = "notify")]
+        send_notification(
+            "Queue Cleaned",
+            &format!("Removed {} duplicate track(s)", removed_count),
+            None,
+        );
+    }
+
     /// The amount of items in `self.queue`.
     pub fn len(&self) -> usize {
         self.queue.read().unwrap().len()

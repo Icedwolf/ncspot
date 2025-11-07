@@ -157,6 +157,7 @@ pub enum Command {
     Redraw,
     Execute(String),
     Reconnect,
+    Dedup,
 }
 
 impl fmt::Display for Command {
@@ -215,6 +216,7 @@ impl fmt::Display for Command {
             | Self::Add
             | Self::AddCurrent
             | Self::Delete
+            | Self::Dedup
             | Self::Back
             | Self::Help
             | Self::ReloadConfig
@@ -232,6 +234,7 @@ impl Command {
     pub fn basename(&self) -> &str {
         match self {
             Self::Quit => "quit",
+            Self::Dedup => "dedup",
             Self::TogglePlay => "playpause",
             Self::Stop => "stop",
             Self::Previous => "previous",
@@ -394,6 +397,7 @@ pub fn parse(input: &str) -> Result<Vec<Command>, CommandParseError> {
             use CommandParseError as E;
             let command = match command {
                 "quit" => Command::Quit,
+                "dedup" => Command::Dedup,
                 "playpause" => Command::TogglePlay,
                 "stop" => Command::Stop,
                 "previous" => Command::Previous,

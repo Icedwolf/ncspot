@@ -299,6 +299,10 @@ impl CommandManager {
                 }
                 Ok(None)
             }
+            Command::Dedup => {
+                self.queue.dedup();
+                Ok(None)
+            }
 
             Command::Queue
             | Command::PlayNext
@@ -564,6 +568,7 @@ impl CommandManager {
             "Shift+Down".into(),
             vec![Command::Shift(ShiftMode::Down, None)],
         );
+        kb.insert("Shift+d".into(), vec![Command::Dedup]);
 
         #[cfg(feature = "share_clipboard")]
         kb.insert(
@@ -577,6 +582,7 @@ impl CommandManager {
     fn parse_key(key: &str) -> Event {
         match key {
             "Enter" => Event::Key(Key::Enter),
+
             "Space" => Event::Char(" ".chars().next().unwrap()),
             "Tab" => Event::Key(Key::Tab),
             "Backspace" => Event::Key(Key::Backspace),
